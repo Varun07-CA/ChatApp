@@ -7,8 +7,8 @@ import java.awt.*;
 import java.awt.event.*;
 
 public class ChatClient {
-    private static final String SERVER_ADDRESS = "localhost"; // Server address
-    private static final int SERVER_PORT = 12345;  // Server port number
+    private static final String SERVER_ADDRESS = "localhost";
+    private static final int SERVER_PORT = 12345;
     private BufferedReader in;
     private PrintWriter out;
     private JFrame frame = new JFrame("Chat Client");
@@ -17,37 +17,22 @@ public class ChatClient {
     private JButton sendButton = new JButton("Send");
 
     public ChatClient() {
-        // Setup GUI components
         textField.setEditable(true);
         messageArea.setEditable(false);
         frame.getContentPane().add(new JScrollPane(messageArea), BorderLayout.CENTER);
         frame.getContentPane().add(textField, BorderLayout.SOUTH);
         frame.getContentPane().add(sendButton, BorderLayout.NORTH);
-
         frame.pack();
 
-        // Add action listeners
-        sendButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                // Send the message when the Send button is pressed
-                sendMessage();
-            }
-        });
-
-        textField.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                // Send the message when Enter is pressed
-                sendMessage();
-            }
-        });
+        sendButton.addActionListener(e -> sendMessage());
+        textField.addActionListener(e -> sendMessage());
     }
 
     private void sendMessage() {
         String message = textField.getText();
         if (!message.trim().isEmpty()) {
-            // Append the message to messageArea immediately (client-side feedback)
-            out.println(message);  // Send message to server
-            textField.setText("");  // Clear the text field
+            out.println(message);
+            textField.setText("");
         }
     }
 
@@ -56,10 +41,8 @@ public class ChatClient {
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         out = new PrintWriter(socket.getOutputStream(), true);
 
-        // Start a new thread to listen for incoming messages
         new Thread(new IncomingReader()).start();
 
-        // Set up the JFrame to show the chat window
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
     }
@@ -69,14 +52,34 @@ public class ChatClient {
             try {
                 String message;
                 while ((message = in.readLine()) != null) {
-                    // Only display new messages from the server (messages sent by other clients)
-                    if (!message.startsWith("INITIAL:")) {
-                        messageArea.append(message + "\n");  // Append new message to message area
+                    if (message.startsWith("DELETE:")) {
+                        String timestamp = message.substring(7);
+                        deleteMessageFromGUI(timestamp);
+                    } else if (message.startsWith("NOTIFICATION:")) {
+                        String notification = message.substring(13);
+                        JOptionPane.showMessageDialog(frame, notification);
+                    } else {
+                        messageArea.append(message + "\n");
                     }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private void deleteMessageFromGUI(String timestamp) {
+        try {
+            String[] lines = messageArea.getText().split("\n");
+            StringBuilder newContent = new StringBuilder();
+            for (String line : lines) {
+                if (!line.startsWith("[" + timestamp + "]")) {
+                    newContent.append(line).append("\n");
+                }
+            }
+            messageArea.setText(newContent.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
