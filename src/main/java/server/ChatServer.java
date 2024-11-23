@@ -207,18 +207,38 @@ public class ChatServer {
             }
         }
 
-        private void broadcastMessage(String message) {
-            long timestamp = System.currentTimeMillis();
-            String formattedMessage = "[" + timestamp + "] " + message;
-
-            synchronized (clientWriters) {
-                for (PrintWriter writer : clientWriters) {
-                    writer.println(formattedMessage);
+        private static void handlePrivateMessage(String sender, String recipient, String message) {
+            PrintWriter recipientWriter = clients.get(recipient);
+            if (recipientWriter != null) {
+                recipientWriter.println("PRIVATE from " + sender + ": " + message);
+            } else {
+                PrintWriter senderWriter = clients.get(sender);
+                if (senderWriter != null) {
+                    senderWriter.println("Recipient " + recipient + " not found.");
                 }
             }
+        }
 
-            messageListModel.addElement(formattedMessage);
-            saveMessageToDatabase(message, timestamp);
+        // Modify the broadcastMessage method to handle private messages
+        private void broadcastMessage(String message) {
+            if (message.startsWith("PRIVATE:")) {
+                String[] parts = message.split(":", 3);
+                if (parts.length == 3) {
+                    handlePrivateMessage(username, parts[1], parts[2]);
+                }
+            } else {
+                long timestamp = System.currentTimeMillis();
+                String formattedMessage = "[" + timestamp + "] " + message;
+
+                synchronized (clientWriters) {
+                    for (PrintWriter writer : clientWriters) {
+                        writer.println(formattedMessage);
+                    }
+                }
+
+                messageListModel.addElement(formattedMessage);
+                saveMessageToDatabase(message, timestamp);
+            }
         }
 
         private void saveMessageToDatabase(String message, long timestamp) {
@@ -228,3 +248,5 @@ public class ChatServer {
         }
     }
 }
+
+

@@ -17,11 +17,11 @@ public class ChatClient {
     private JTextField textField = new JTextField(50);
     private JTextArea messageArea = new JTextArea(16, 50);
     private JButton sendButton = new JButton("Send");
+    private JButton privateMessageButton = new JButton("Private Message");
     private String username;
 
-    public ChatClient() {
-        // Login Window
-        loginWindow();
+    public ChatClient(String username) {
+        this.username = username;
 
         // Configure UI
         messageArea.setEditable(false);
@@ -35,7 +35,11 @@ public class ChatClient {
 
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.add(textField, BorderLayout.CENTER);
-        bottomPanel.add(sendButton, BorderLayout.EAST);
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(privateMessageButton);
+        buttonPanel.add(sendButton);
+        bottomPanel.add(buttonPanel, BorderLayout.EAST);
 
         frame.getContentPane().add(new JScrollPane(messageArea), BorderLayout.CENTER);
         frame.getContentPane().add(bottomPanel, BorderLayout.SOUTH);
@@ -44,34 +48,17 @@ public class ChatClient {
 
         sendButton.addActionListener(e -> sendMessage());
         textField.addActionListener(e -> sendMessage());
+
+        privateMessageButton.addActionListener(e -> sendPrivateMessage());
     }
 
-    private void loginWindow() {
-        JFrame loginFrame = new JFrame("Login");
-        JTextField usernameField = new JTextField(20);
-        JButton loginButton = new JButton("Login");
-
-        loginFrame.setLayout(new FlowLayout());
-        loginFrame.add(new JLabel("Enter your username:"));
-        loginFrame.add(usernameField);
-        loginFrame.add(loginButton);
-        loginFrame.setSize(300, 120);
-        loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        loginFrame.setVisible(true);
-
-        loginButton.addActionListener(e -> {
-            username = usernameField.getText().trim();
-            if (!username.isEmpty()) {
-                loginFrame.dispose();
-                try {
-                    connect();
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-            } else {
-                JOptionPane.showMessageDialog(loginFrame, "Username cannot be empty.");
-            }
-        });
+    public void launch() {
+        try {
+            connect();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+        frame.setVisible(true);
     }
 
     private void sendMessage() {
@@ -82,16 +69,33 @@ public class ChatClient {
         }
     }
 
+    private void sendPrivateMessage() {
+        String recipient = JOptionPane.showInputDialog(frame, "Enter the recipient's username:");
+        String message = JOptionPane.showInputDialog(frame, "Enter your private message:");
+        if (recipient != null && message != null && !recipient.trim().isEmpty() && !message.trim().isEmpty()) {
+            out.println("PRIVATE:" + recipient + ":" + message);
+        } else {
+            JOptionPane.showMessageDialog(frame, "Recipient and message cannot be empty!");
+        }
+    }
+
     public void connect() throws IOException {
-        Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
+        Socket socket = new Socket();
+        socket.connect(new InetSocketAddress(SERVER_ADDRESS, SERVER_PORT), 5000); // 5-second timeout
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         out = new PrintWriter(socket.getOutputStream(), true);
 
-        // Send username to server
         out.println("USER:" + username);
 
+        String serverResponse = in.readLine();
+        if (serverResponse != null && serverResponse.startsWith("ERROR:")) {
+            JOptionPane.showMessageDialog(frame, serverResponse);
+            socket.close();
+            return;
+        }
+
         new Thread(new IncomingReader()).start();
-        frame.setVisible(true);
+        SwingUtilities.invokeLater(() -> frame.setVisible(true));
     }
 
     private class IncomingReader implements Runnable {
@@ -105,9 +109,5 @@ public class ChatClient {
                 e.printStackTrace();
             }
         }
-    }
-
-    public static void main(String[] args) {
-        new ChatClient();
     }
 }
