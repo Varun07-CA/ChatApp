@@ -3,6 +3,7 @@ package server;
 import com.mongodb.client.*;
 import com.mongodb.client.result.DeleteResult;
 import org.bson.Document;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -240,6 +241,7 @@ public class ChatServer {
                 saveMessageToDatabase(message, timestamp);
             }
         }
+
 
         private void saveMessageToDatabase(String message, long timestamp) {
             Document doc = new Document("message", message).append("timestamp", timestamp);

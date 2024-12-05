@@ -79,23 +79,15 @@ public class ChatClient {
         }
     }
 
-    public void connect() throws IOException {
-        Socket socket = new Socket();
-        socket.connect(new InetSocketAddress(SERVER_ADDRESS, SERVER_PORT), 5000); // 5-second timeout
+    private void connect() throws IOException {
+        Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         out = new PrintWriter(socket.getOutputStream(), true);
 
+        // Send username to server
         out.println("USER:" + username);
 
-        String serverResponse = in.readLine();
-        if (serverResponse != null && serverResponse.startsWith("ERROR:")) {
-            JOptionPane.showMessageDialog(frame, serverResponse);
-            socket.close();
-            return;
-        }
-
         new Thread(new IncomingReader()).start();
-        SwingUtilities.invokeLater(() -> frame.setVisible(true));
     }
 
     private class IncomingReader implements Runnable {
